@@ -75,6 +75,19 @@ def main():
             available_models,
             index=0
         )
+
+        st.markdown(         
+                """
+                <div style='position: fixed; bottom: 50px; left: 30px; font-size: 13px; color: gray; text-align: left;'>
+                    🚀 Developed by 
+                        <a href='https://shriyabhatija.github.io' target='_blank' style='color: #1E90FF; text-decoration: none;'>
+                        Shriya Bhatija</a>
+                        <br>
+                    12.03.2025
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
     
     st.title("💭 DeepSeek Chat")
     
