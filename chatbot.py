@@ -59,7 +59,7 @@ def extract_thinking_and_response(text: str) -> tuple[str, str]:
 
 def main():
     st.set_page_config(
-        page_title="DeepSeek Chat",
+        page_title="Local Chatbot",
         page_icon="🤖",
         layout="wide"
     )
@@ -89,7 +89,7 @@ def main():
                 unsafe_allow_html=True
             )
     
-    st.title("💭 DeepSeek Chat")
+    st.title("💭 Local Chatbot")
     
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -105,6 +105,10 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
+
+        full_prompt = ""
+        for message in st.session_state.messages:
+            full_prompt += f"{message['role']}: {message['content']}\n"
         
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
@@ -119,7 +123,7 @@ def main():
                 with thinking_placeholder.container():
                     thinking_expander = st.expander("Show reasoning", expanded=False)
                 
-                for response_chunk in generate_stream(prompt, selected_model):
+                for response_chunk in generate_stream(full_prompt, selected_model):
                     full_response += response_chunk
                     thinking, response = extract_thinking_and_response(full_response)
                     
