@@ -22,7 +22,7 @@ OLLAMA_API_BASE = "http://localhost:11434"
 def get_models() -> List[str]:
     try:
         with open('models.txt', 'r') as f:
-            return [str(line) for line in f if line.strip()]
+            return [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
         return ["deepseek-r1:1.5b"]
 
