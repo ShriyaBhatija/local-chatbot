@@ -7,7 +7,7 @@ import requests
 import json
 from typing import Iterator, List
 
-# Hide Streamlit menu and footer
+# hide Streamlit menu and footer
 hide_streamlit_style = """
 <style>
 #MainMenu {visibility: hidden;}
@@ -16,28 +16,34 @@ header {visibility: hidden;}
 </style>
 """
 
+# Ollama API is hosted on localhost at port 11434
+# base URL for Ollama API
 OLLAMA_API_BASE = "http://localhost:11434"
 
-
+# get models from models.txt file
 def get_models() -> List[str]:
     try:
         with open('models.txt', 'r') as f:
-            return [line.strip() for line in f if line.strip()]
+            models = [line.strip() for line in f if line.strip()]
+            if not models:
+                return ["deepseek-r1:1.5b"]
     except FileNotFoundError:
         return ["deepseek-r1:1.5b"]
 
 
 def generate_stream(prompt: str, model: str) -> Iterator[str]:
+    # sends a POST request to the Ollama server to generate a response based on the provided model and prompt
     response = requests.post(
-        f"{OLLAMA_API_BASE}/api/generate",
+        f"{OLLAMA_API_BASE}/api/generate", #/api/generate endpoint is used to generate a response/completion for a given prompt
         json={
             "model": model,
             "prompt": prompt,
-            "stream": True
+            "stream": True  # stream the response
         },
-        stream=True
+        stream=True # stream the response: response will be received in chunks, allowing the client to process it incrementally as it arrives
     )
     
+    # process the streamed response from the Ollama server
     for line in response.iter_lines():
         if line:
             json_response = json.loads(line)
@@ -46,6 +52,7 @@ def generate_stream(prompt: str, model: str) -> Iterator[str]:
             if json_response.get('done', False):
                 break
 
+# extract the "thinking" and "response" parts from a given text
 def extract_thinking_and_response(text: str) -> tuple[str, str]:
     think_start = text.find("<think>")
     think_end = text.find("</think>")
@@ -58,14 +65,18 @@ def extract_thinking_and_response(text: str) -> tuple[str, str]:
     return "", text
 
 def main():
+    # configure the settings for the Streamlit app page
     st.set_page_config(
         page_title="Local Chatbot",
         page_icon="🤖",
         layout="wide"
     )
     
+    # allow to render Markdown text
+    # allow to apply custom CSS and HTML styles in the Streamlit app
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
     
+    # Sidebar for model selection
     with st.sidebar:
         st.title("Settings")
 
@@ -91,9 +102,11 @@ def main():
     
     st.title("💭 Local Chatbot")
     
+    # st.session_state is a special dictionary provided by Streamlit to store variables that need to persist across different interactions within the same session
     if "messages" not in st.session_state:
-        st.session_state.messages = []
+        st.session_state.messages = [] # list that stores the conversation history between the user and the chatbot
     
+    # iterate through the messages stored in the Streamlit session state and display them in the chat interface
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             if message["role"] == "assistant" and "thinking" in message and message["thinking"]:
@@ -101,38 +114,42 @@ def main():
                     st.markdown(message["thinking"])
             st.markdown(message["content"])
     
+
+    #  handle user input in the Streamlit app and updates the chat interface accordingly
     if prompt := st.chat_input("What would you like to ask?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
+        with st.chat_message("user"): # create a chat message block in the Streamlit app for the user's input
             st.markdown(prompt)
 
+        # add memory
         full_prompt = ""
         for message in st.session_state.messages:
             full_prompt += f"{message['role']}: {message['content']}\n"
         
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            thinking_placeholder = st.empty()
+        # generate and display of the assistant's response in the chat interface
+        with st.chat_message("assistant"): # chat message block in the Streamlit app for the assistant's response
+            message_placeholder = st.empty() # empty placeholders
+            thinking_placeholder = st.empty() # empty placeholders
             
-            message_placeholder.markdown("🤔 Thinking...")
+            message_placeholder.markdown("🤔 Thinking...") # display a "Thinking..." message
             
             full_response = ""
             last_thinking = ""
             
             try:
-                with thinking_placeholder.container():
-                    thinking_expander = st.expander("Show reasoning", expanded=False)
+                with thinking_placeholder.container(): # container within thinking_placeholder
+                    thinking_expander = st.expander("Show reasoning", expanded=False) # expander widget labeled "Show reasoning" that is initially collapsed
                 
                 for response_chunk in generate_stream(full_prompt, selected_model):
                     full_response += response_chunk
                     thinking, response = extract_thinking_and_response(full_response)
                     
-                    if thinking and thinking != last_thinking:
+                    if thinking and thinking != last_thinking: # checks if there is new thinking content that has not been displayed yet
                         with thinking_expander:
                             st.markdown(thinking)
                         last_thinking = thinking
                     
-                    message_placeholder.markdown(response + "▌")
+                    message_placeholder.markdown(response + "▌") # updates the message_placeholder with the current response and a cursor (▌) to indicate that the response is still being generated
                 
                 thinking, response = extract_thinking_and_response(full_response)
                 message_placeholder.markdown(response)
